@@ -1,6 +1,8 @@
 import argparse
 import math
 
+from collections import defaultdict
+
 
 class Square(object):
     def __init__(self, digit=None):
@@ -64,6 +66,9 @@ class SudokuBoard(object):
 
         self.squares = squares
 
+    def get_cell_starts(self):
+        return [self.root * i for i in range(self.root)]
+
     def rule_set_if_one_potential(self):
         for line in self.squares:
             for square in line:
@@ -71,9 +76,8 @@ class SudokuBoard(object):
                     square.digit = square.potentials[0]
 
     def rule_already_exists_in_cell(self):
-        # get list of values in cell and remove from potentials of all in cell
-        number_of_cells = self.root
-        cell_starts = [number_of_cells * i for i in range(number_of_cells)]
+        # Only one of each digit can exist in a cell
+        cell_starts = self.get_cell_starts()
 
         for start_x in cell_starts:
             for start_y in cell_starts:
@@ -96,19 +100,85 @@ class SudokuBoard(object):
                         square = self.squares[coord_x][coord_y]
                         if len(square.potentials) != 1:
                             square.potentials = list(set(square.potentials) - set(digits_in_cell))
-                        assert len(square.potentials) != 0
 
     def rule_already_exists_in_line(self):
         # get the list of values in each row/column and remove from potentials in that line
-        pass
+        for i in range(self.length):
+            digits_in_row = []
+            digits_in_col = []
+
+            for j in range(self.length):
+                square_row = self.squares[i][j]
+                if square_row.digit:
+                    digits_in_row.append(square_row.digit)
+
+                square_col = self.squares[j][i]
+                if square_col.digit:
+                    digits_in_col.append(square_col.digit)
+
+            for j in range(self.length):
+                square_row = self.squares[i][j]
+                square_row.potentials = list(set(square_row.potentials) - set(digits_in_row))
+
+                square_col = self.squares[j][i]
+                square_col.potentials = list(set(square_col.potentials) - set(digits_in_col))
+           
 
     def rule_only_potential_in_cell(self):
         # if a cell is the only one in its cell with a given potential, make that its only potential
-        pass
+        cell_starts = self.get_cell_starts()
+
+        for start_x in cell_starts:
+            for start_y in cell_starts:
+                potential_count = defaultdict(int)
+
+                # count the number of occurences of a potential value in the cell
+                for i in range(self.root):
+                    for j in range(self.root):
+                        coord_x = start_x + i
+                        coord_y = start_y + j
+                        square = self.squares[coord_x][coord_y]
+                        for potential in square.potentials:
+                            potential_count[potential] += 1
+
+                # look for unique potentials
+                for i in range(self.root):
+                    for j in range(self.root):
+                        coord_x = start_x + i
+                        coord_y = start_y + j
+                        square = self.squares[coord_x][coord_y]
+                        for potential in square.potentials:
+                            if potential_count[potential] == 1:
+                                square.potentials = [potential]
+                                break
 
     def rule_only_potential_in_line(self):
         # if a cell is the only one in a row or column with a given potential, make that its only potential
-        pass
+        for i in range(self.length):
+            potential_count_row = defaultdict(int)
+            potential_count_col = defaultdict(int)
+
+            for j in range(self.length):
+                square_row = self.squares[i][j]
+                for potential in square_row.potentials:
+                    potential_count_row[potential] += 1
+
+                square_col = self.squares[j][i]
+                for potential in square_col.potentials:
+                    potential_count_col[potential] += 1
+
+            for j in range(self.length):
+                square_row = self.squares[i][j]
+                for potential in square_row.potentials:
+                    if potential_count_row[potential] == 1:
+                        square_row.potentials = [potential]
+                        break
+
+                square_col = self.squares[j][i]
+                for potential in square_col.potentials:
+                    if potential_count_col[potential] == 1:
+                        square_col.potentials = [potential]
+                        break
 
     def apply_rules(self):
         while True:
