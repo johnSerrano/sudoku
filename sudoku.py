@@ -180,6 +180,48 @@ class SudokuBoard(object):
                         square_col.potentials = [potential]
                         break
 
+    def rule_potentials_in_a_line(self):
+        # if all the potentials in a cell for one digit are in a 
+        # line, remove all other potentials in a line
+        cell_starts = self.get_cell_starts()
+
+        for start_x in cell_starts:
+            for start_y in cell_starts:
+                potential_x = defaultdict(list)
+                potential_y = defaultdict(list)
+
+                for i in range(self.root):
+                    for j in range(self.root):
+                        coord_x = start_x + i
+                        coord_y = start_y + j
+                        square = self.squares[coord_x][coord_y]
+                        for potential in square.potentials:
+                            potential_x[potential].append(coord_x)
+                            potential_y[potential].append(coord_y)
+
+                for potential, positions_x in potential_x.iteritems():
+                    positions_y = potential_y[potential]
+
+                    if len(set(positions_x)) == 1 and len(set(positions_y)) > 1:
+                        coord_x = positions_x[0] 
+                        # iterate over every square _not_ in this cell and remove it from potentials
+                        for coord_y in range(self.length):
+                            if coord_y >= start_x and coord_y < start_x + self.root:
+                                continue
+
+                            square = self.squares[coord_x][coord_y]
+                            square.potentials = list(set(square.potentials) - set([potential]))
+
+                    if len(set(positions_y)) == 1 and len(set(positions_x)) > 1:
+                        coord_y = positions_y[0]
+
+                        for coord_y in range(self.length):
+                            if coord_y >= start_y and coord_y < start_y + self.root:
+                                continue
+
+                            square = self.squares[coord_x][coord_y]
+                            square.potentials = list(set(square.potentials) - set([potential]))
+
     def apply_rules(self):
         while True:
             before_hash = self.get_comparable_hash()
