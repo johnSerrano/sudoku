@@ -182,7 +182,7 @@ class SudokuBoard(object):
 
     def rule_potentials_in_a_line(self):
         # if all the potentials in a cell for one digit are in a 
-        # line, remove all other potentials in a line
+        # line, remove all other instances of that potential in that line
         cell_starts = self.get_cell_starts()
 
         for start_x in cell_starts:
@@ -206,7 +206,7 @@ class SudokuBoard(object):
                         coord_x = positions_x[0] 
                         # iterate over every square _not_ in this cell and remove it from potentials
                         for coord_y in range(self.length):
-                            if coord_y >= start_x and coord_y < start_x + self.root:
+                            if coord_y >= start_y and coord_y < start_y + self.root:
                                 continue
 
                             square = self.squares[coord_x][coord_y]
@@ -215,8 +215,8 @@ class SudokuBoard(object):
                     if len(set(positions_y)) == 1 and len(set(positions_x)) > 1:
                         coord_y = positions_y[0]
 
-                        for coord_y in range(self.length):
-                            if coord_y >= start_y and coord_y < start_y + self.root:
+                        for coord_x in range(self.length):
+                            if coord_x >= start_x and coord_x < start_x + self.root:
                                 continue
 
                             square = self.squares[coord_x][coord_y]
