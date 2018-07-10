@@ -4,6 +4,38 @@ import math
 from collections import defaultdict
 
 
+memos = {}
+
+
+def accept(board):
+    for i in range(board.length):
+        for j in range(board.length):
+            if board.squares[i][j].digit is None:
+                return False
+
+    return board.validate()
+
+
+def search(board):
+    valid = board.solve()
+    if not valid:
+        memos[str(board)] = False
+        return None
+
+    if str(board) in memos:
+        return None
+
+    if accept(board):
+        return board
+
+    for child in board.generate_children():
+        solution = search(child)
+        if solution is not None:
+            return solution
+
+    memos[str(board)] = False
+
+
 class Square(object):
     def __init__(self, digit=None):
         assert digit is None or isinstance(digit, int), "digit is type {}".format(type(digit))
@@ -66,8 +98,84 @@ class SudokuBoard(object):
 
         self.squares = squares
 
+        # set initial potential values
+        for line in self.squares:
+            for square in line:
+                if square.mutable:
+                    square.potentials = [i+1 for i in range(self.length)]
+                else:
+                    square.potentials = [square.digit]
+
     def get_cell_starts(self):
         return [self.root * i for i in range(self.root)]
+
+    def generate_children(self):
+        for i in range(self.length):
+            for j in range(self.length):
+                square = self.squares[i][j]
+                for potential in square.potentials:
+                    new_board = SudokuBoard(str(self), self.length)
+                    new_board.squares[i][j].digit = potential
+                    new_board.squares[i][j].potentials = [potential]
+                    yield new_board
+
+    def validate(self):
+        for i in range(self.length):
+            digits_in_row = []
+            digits_in_col = []
+            potentials_in_row = []
+            potentials_in_col = []
+
+            for j in range(self.length):
+                square_row = self.squares[i][j]
+                if square_row.digit:
+                    digits_in_row.append(square_row.digit)
+                elif len(square_row.potentials) == 0:
+                    return False
+                else:
+                    potentials_in_row.extend(square_row.potentials)
+
+
+                square_col = self.squares[j][i]
+                if square_col.digit:
+                    digits_in_col.append(square_col.digit)
+                elif len(square_col.potentials) == 0:
+                    return False
+                else:
+                    potentials_in_col.extend(square_col.potentials)
+
+            missing_row = set(i+1 for i in range(self.length)) - set(digits_in_row)
+            if set(potentials_in_row) < missing_row:
+                return False
+
+            missing_col = set(i+1 for i in range(self.length)) - set(digits_in_col)
+            if set(potentials_in_col) < missing_col:
+                return False
+
+            if len(set(digits_in_row)) != len(digits_in_row):
+                return False
+            if len(set(digits_in_col)) != len(digits_in_col):
+                return False
+
+        cell_starts = self.get_cell_starts()
+
+        for start_x in cell_starts:
+            for start_y in cell_starts:
+                digits_in_cell = []
+
+                # Collect all digits in the cell
+                for i in range(self.root):
+                    for j in range(self.root):
+                        coord_x = start_x + i
+                        coord_y = start_y + j
+                        square = self.squares[coord_x][coord_y]
+                        if square.digit:
+                            digits_in_cell.append(square.digit)
+                if len(set(digits_in_cell)) != len(digits_in_cell):
+                    return False
+
+        return True
+
 
     def rule_set_if_one_potential(self):
         for line in self.squares:
@@ -222,8 +330,11 @@ class SudokuBoard(object):
                             square = self.squares[coord_x][coord_y]
                             square.potentials = list(set(square.potentials) - set([potential]))
 
-    def apply_rules(self):
+    def solve(self):
         while True:
+            if not self.validate():
+                return False
+
             before_hash = self.get_comparable_hash()
             
             for name in dir(self):
@@ -232,22 +343,8 @@ class SudokuBoard(object):
 
             after_hash = self.get_comparable_hash()
             if after_hash == before_hash:
-                break
+                return self.validate()
 
-    def solve(self):
-        '''
-        Attempt to solve the sudoku board. Fills in as many squares as possible.
-        '''
-        # set initial potential values
-        for line in self.squares:
-            for square in line:
-                if square.mutable:
-                    square.potentials = [i+1 for i in range(self.length)]
-                else:
-                    square.potentials = [square.digit]
-
-        self.apply_rules()
-                
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -260,9 +357,16 @@ def main():
         raw_data = f.read()
     board = SudokuBoard(raw_data)
 
-    board.solve()
+    valid = board.solve()
+    if not valid:
+        print "Invalid puzzle, no solution possible."
+        return
 
-    print board
+    solution = search(board)
+    if solution is None:
+        print "Failed to find any solutions"
+    else:
+        print str(solution)
     
 
 if __name__ == '__main__':
