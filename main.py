@@ -9,8 +9,8 @@ class ApiHandler(webapp2.RequestHandler):
         board = sudoku.SudokuBoard(r['board'])
         try:
             ok, msg = sudoku.find_solution(board, 60)
-        except sudoku.TimeoutException():
-            respone = {'ok': False, 'msg': 'Timed out after 1 minute'}
+        except sudoku.TimeoutException:
+            response = {'ok': False, 'msg': 'Timed out after 1 minute'}
         else:
             response = {'ok': ok, 'msg': msg}
 
