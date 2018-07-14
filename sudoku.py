@@ -1,10 +1,15 @@
 import argparse
 import math
+import time
 
 from collections import defaultdict
 
 
 memos = {}
+
+
+class TimeoutException(RuntimeError):
+    pass
 
 
 def accept(board):
@@ -16,7 +21,10 @@ def accept(board):
     return board.validate()
 
 
-def search(board):
+def search(board, deadline=None):
+    if deadline and time.time() > deadline:
+        raise TimeoutException()    
+
     valid = board.solve()
     if not valid:
         memos[str(board)] = False
@@ -29,7 +37,7 @@ def search(board):
         return board
 
     for child in board.generate_children():
-        solution = search(child)
+        solution = search(child, deadline)
         if solution is not None:
             return solution
 
@@ -79,7 +87,7 @@ class SudokuBoard(object):
         '''
 
         lines = raw_board.strip().split('\n')
-        assert len(lines) == self.length, 'expected {} lines, got {}'.format(self.length, len(lines))
+        assert len(lines) == self.length, 'expected {} lines, got {}, {}'.format(self.length, len(lines), raw_board)
 
         squares = [[None] * self.length for _ in range(self.length)]
 
@@ -346,9 +354,24 @@ class SudokuBoard(object):
                 return self.validate()
 
 
+def find_solution(board, timeout=None):
+    valid = board.solve()
+    if not valid:
+        return False, "Invalid puzzle, no solution possible."
+
+    deadline = time.time() + timeout if timeout else None
+
+    solution = search(board, deadline)
+    if solution is None:
+        return False, "Failed to find any solutions"
+    else:
+        return True, str(solution)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--file', required=True)
+    parser.add_argument('--timeout', type=int, required=False)
     return parser.parse_args()
 
 def main():
@@ -357,16 +380,8 @@ def main():
         raw_data = f.read()
     board = SudokuBoard(raw_data)
 
-    valid = board.solve()
-    if not valid:
-        print "Invalid puzzle, no solution possible."
-        return
-
-    solution = search(board)
-    if solution is None:
-        print "Failed to find any solutions"
-    else:
-        print str(solution)
+    ok, msg = find_solution(board, args.timeout)
+    print msg
     
 
 if __name__ == '__main__':
